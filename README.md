@@ -1,10 +1,10 @@
 # Transcription Agent plugin
 
-A shared Claude Code and Codex skill for [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go). It turns local MP3, WAV, M4A, FLAC, or OGG recordings into TXT, SRT, or JSON transcripts using the existing `transcriber-cli` program. The plugin repo contains no model API keys or audio files.
+A shared Claude Code and Codex skill for [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go). It turns local MP3, WAV, M4A, FLAC, or OGG recordings into TXT, SRT, or JSON transcripts using the Go `transcriber-cli` program. The plugin has no Python runtime or stored keys.
 
 ## 1. Install the CLI
 
-The plugin calls Transcription Agent's CLI, so build it from the [source repository](https://github.com/cyanxxy/transcription-agent-go) and put the binary on `PATH`:
+Build the CLI from the [Transcription Agent source](https://github.com/cyanxxy/transcription-agent-go) and put it on `PATH`:
 
 ```bash
 git clone https://github.com/cyanxxy/transcription-agent-go.git
@@ -14,20 +14,20 @@ mkdir -p "$HOME/.local/bin"
 cp bin/transcriber-cli "$HOME/.local/bin/transcriber-cli"
 ```
 
-This requires Go 1.26+, `ffmpeg`, and `ffprobe`. If the binary lives elsewhere, set `TRANSCRIBER_CLI` to its absolute path in the environment where Claude Code or Codex runs.
+Make sure `~/.local/bin` is on the `PATH` seen by Claude Code or Codex, or set `TRANSCRIBER_CLI` to the binary's absolute path in that environment. The CLI requires Go 1.26+ to build. Transcription also requires `ffmpeg` and `ffprobe`.
 
 ## 2. Set up credentials
 
-From this plugin repository, run the interactive setup command for the provider you use:
+Run the CLI setup command in your own terminal:
 
 ```bash
-python3 plugins/transcription-agent/scripts/setup.py --provider gemini
-python3 plugins/transcription-agent/scripts/setup.py --check
+transcriber-cli auth set gemini
+transcriber-cli auth status
 ```
 
-Use `--provider meta` or `--provider microsoft` for the other speech models. Microsoft setup asks for its Speech resource HTTPS endpoint too. The command hides key input and saves credentials as plaintext in `~/.config/transcription-agent-plugin/credentials.json` with owner-only permissions. Set `XDG_CONFIG_HOME` or `TRANSCRIPTION_AGENT_CREDENTIALS_FILE` to choose a different location. Run `--clear --provider gemini` to remove a saved key.
+Use `auth set meta` or `auth set microsoft` for the other speech models. Microsoft setup asks for its Speech resource HTTPS endpoint too. The Go CLI hides key input and saves plaintext credentials in an owner-only file under the OS user config directory at `transcription-agent/credentials.json`. Set `TRANSCRIBER_CREDENTIALS_FILE` to an absolute path to use another location. Run `auth remove <provider>` to delete a saved key.
 
-Existing `GEMINI_API_KEY`, `META_API_KEY`, `AZURE_SPEECH_KEY`, and `AZURE_SPEECH_ENDPOINT` environment variables take precedence over saved credentials. For CI, use environment variables instead of interactive setup. Never commit keys to this repository.
+Environment variables `GEMINI_API_KEY`, `META_API_KEY`, `AZURE_SPEECH_KEY`, and `AZURE_SPEECH_ENDPOINT` take precedence over saved values. For CI, use environment variables instead of interactive setup. Never commit keys to this repository.
 
 ## 3. Load the plugin
 
@@ -57,15 +57,12 @@ codex plugin marketplace add .
 codex plugin add transcription-agent@transcription-agent-tools
 ```
 
-Start a new Codex task after installation and ask it to transcribe a local recording. The plugin's shared skill is in [`plugins/transcription-agent/skills/transcribe/SKILL.md`](plugins/transcription-agent/skills/transcribe/SKILL.md).
+Start a new Codex task after installation and ask it to transcribe a local recording. The shared instructions are in [the transcribe skill](plugins/transcription-agent/skills/transcribe/SKILL.md).
 
-## Direct launcher usage
+## Direct usage
 
 ```bash
-python3 plugins/transcription-agent/scripts/transcribe.py \
-  --input /absolute/path/to/meeting.m4a \
-  --output /absolute/path/to/meeting.srt \
-  --format srt
+transcriber-cli -i /absolute/path/to/meeting.m4a -o /absolute/path/to/meeting.srt -format srt
 ```
 
-The default model is `gemini-3.5-transcribe`. Select `muse-voice-transcribe-1.0` or `MAI-Transcribe-2` with `--model` when using Meta or Microsoft. The launcher refuses to replace an existing output file unless you pass `--overwrite`.
+The default model is `gemini-3.5-transcribe`. Select `muse-voice-transcribe-1.0` or `MAI-Transcribe-2` with `--model` when using Meta or Microsoft. Check whether an output file already exists before using `-o`: the CLI replaces it.

@@ -1,0 +1,20 @@
+{
+  "name": "transcription-agent-tools",
+  "interface": {
+    "displayName": "Transcription Agent Tools"
+  },
+  "plugins": [
+    {
+      "name": "transcription-agent",
+      "source": {
+        "source": "local",
+        "path": "./plugins/transcription-agent"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

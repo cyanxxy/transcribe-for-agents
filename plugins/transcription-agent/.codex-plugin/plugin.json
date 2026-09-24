@@ -1,0 +1,31 @@
+{
+  "name": "transcription-agent",
+  "version": "0.1.0",
+  "description": "Transcribe local audio with the Transcription Agent CLI.",
+  "author": {
+    "name": "cyanxxy",
+    "url": "https://github.com/cyanxxy"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "audio",
+    "transcription",
+    "diarization",
+    "subtitles"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Transcription Agent",
+    "shortDescription": "Transcribe audio to TXT, SRT, or JSON.",
+    "longDescription": "Use the Transcription Agent CLI to create speaker-labeled, timestamped transcripts from local recordings.",
+    "developerName": "cyanxxy",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Transcribe this recording and save an SRT file.",
+      "Create a speaker-labeled transcript from this audio."
+    ]
+  }
+}

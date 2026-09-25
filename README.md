@@ -100,7 +100,7 @@ npx skills add . --skill transcribe --agent claude-code --global
 npx skills add . --skill transcribe --agent codex --global
 ```
 
-After this repository is published on GitHub, replace `.` with its `owner/repo` name to install remotely. The Skills CLI installs the skill instructions; install `transcriber-cli` and set up a provider key with `transcriber-cli auth set` as described above. Use either the plugin marketplace or the Skills CLI for a given agent to avoid installing the same skill twice.
+For remote installation, use the `cyanxxy/transcribe-for-agents` commands in Quick install above. The Skills CLI installs the skill instructions; install `transcriber-cli` and set up a provider key with `transcriber-cli auth set` as described above. Use either the plugin marketplace or the Skills CLI for a given agent to avoid installing the same skill twice.
 
 ## Direct usage
 

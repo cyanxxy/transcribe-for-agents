@@ -6,8 +6,8 @@
     "name": "cyanxxy",
     "url": "https://github.com/cyanxxy"
   },
-  "homepage": "https://github.com/cyanxxy/transcribe-for-agents#readme",
-  "repository": "https://github.com/cyanxxy/transcribe-for-agents",
+  "homepage": "https://github.com/cyanxxy/transcription-agent-plugin#readme",
+  "repository": "https://github.com/cyanxxy/transcription-agent-plugin",
   "license": "Apache-2.0",
   "keywords": [
     "audio",
@@ -29,7 +29,7 @@
       "Transcribe this recording and save an SRT file.",
       "Create a speaker-labeled transcript from this audio."
     ],
-    "websiteURL": "https://github.com/cyanxxy/transcribe-for-agents",
+    "websiteURL": "https://github.com/cyanxxy/transcription-agent-plugin",
     "brandColor": "#6D28D9",
     "composerIcon": "./assets/icon.png",
     "logo": "./assets/logo.png"

@@ -9,7 +9,7 @@ Use the Go `transcriber-cli` from [Transcription Agent](https://github.com/cyanx
 
 1. Find the local audio file. Ask for its path only if it cannot be found from the user's message or workspace.
 2. Choose `txt` by default, `srt` for subtitles, or `json` for structured segments and metadata. Save beside the audio unless the user names another destination. Check whether the output exists before running: the CLI replaces a file named with `-o`, so use a different path unless the user wants it replaced.
-3. If the CLI is missing, direct the user to the [one-command installer](https://github.com/cyanxxy/transcribe-for-agents#one-command-setup). It installs the engine and skill, then prompts for a key in their terminal. Check credentials with `transcriber-cli auth status` (or `auth status gemini`, `meta`, or `microsoft`, which exits nonzero when that provider is not configured). To save a key later, tell the user to run `transcriber-cli auth set gemini` (or `meta` or `microsoft`) in their own terminal. Never ask the user to paste a key into chat or put it in command arguments.
+3. If the CLI is missing, direct the user to the [one-command installer](https://github.com/cyanxxy/transcription-agent-plugin#-quick-start). It installs the engine and skill, then prompts for a key in their terminal. Check credentials with `transcriber-cli auth status` (or `auth status gemini`, `meta`, or `microsoft`, which exits nonzero when that provider is not configured). To save a key later, tell the user to run `transcriber-cli auth set gemini` (or `meta` or `microsoft`) in their own terminal. Never ask the user to paste a key into chat or put it in command arguments.
 4. Run with absolute paths, for example:
 
    ```bash

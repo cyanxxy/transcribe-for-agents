@@ -5,8 +5,8 @@
   "author": {
     "name": "cyanxxy"
   },
-  "homepage": "https://github.com/cyanxxy/transcribe-for-agents#readme",
-  "repository": "https://github.com/cyanxxy/transcribe-for-agents",
+  "homepage": "https://github.com/cyanxxy/transcription-agent-plugin#readme",
+  "repository": "https://github.com/cyanxxy/transcription-agent-plugin",
   "license": "Apache-2.0",
   "keywords": [
     "audio",

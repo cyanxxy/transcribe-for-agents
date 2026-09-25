@@ -4,7 +4,7 @@
     "name": "cyanxxy",
     "url": "https://github.com/cyanxxy"
   },
-  "description": "Claude Code skills for the Transcription Agent CLI.",
+  "description": "Transcription Agent plugin with a shared audio transcription skill.",
   "plugins": [
     {
       "name": "transcription-agent",

@@ -2,13 +2,15 @@
 
 <img src="plugins/transcription-agent/assets/logo.png" alt="" width="96" height="96">
 
-# Transcribe for Agents
+# Transcription Agent Plugin
 
 **Coding agents can't hear. This gives them ears.**
 
 Hand Claude Code, Codex, or any Agent Skills agent a recording and get back a timestamped, speaker-labeled transcript, subtitles, or JSON.
 
-[![CI](https://github.com/cyanxxy/transcribe-for-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/cyanxxy/transcribe-for-agents/actions/workflows/ci.yml)
+This repository is the plugin package. It currently contains the shared transcription skill, plugin manifests, and installer. The package can also host an MCP server when that integration is ready.
+
+[![CI](https://github.com/cyanxxy/transcription-agent-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/cyanxxy/transcription-agent-plugin/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 ![Agents](https://img.shields.io/badge/agents-Claude%20Code%20%7C%20Codex%20%7C%20Agent%20Skills-6D28D9)
@@ -27,7 +29,7 @@ Recordings are everywhere in real work: standups, customer calls, interviews, po
 - **Codex can't either.** You can attach [files, folders, and images](https://learn.chatgpt.com/docs/features), and its voice mode is for talking to Codex, not for turning a recording into text.
 - **So agents improvise.** Asked for a transcript, an agent will typically try to install a local speech model: a Python environment, gigabytes of model weights, slow runs on a laptop CPU, and no speaker labels without yet another tool. Or it gives up and asks you to do it elsewhere.
 
-**Transcribe for Agents** closes that gap with one skill and one command. The agent calls `transcriber-cli`, which sends the audio to one of today's dedicated speech-to-text models and writes the result next to the recording:
+**Transcription Agent Plugin** closes that gap with a skill and one command. The agent calls `transcriber-cli`, which sends the audio to one of today's dedicated speech-to-text models and writes the result next to the recording:
 
 - 🗣️ **Speaker labels and timestamps** on every segment
 - 🎞️ **TXT, SRT, or JSON**, ready for notes, subtitles, or code
@@ -40,14 +42,14 @@ Recordings are everywhere in real work: standups, customer calls, interviews, po
 **Claude Code and Codex.** Run this in your own terminal on macOS or Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcribe-for-agents/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcription-agent-plugin/main/install.sh | bash
 ```
 
 **Any other Agent Skills agent** (Cursor, GitHub Copilot, OpenCode, and [more](#-works-with)). Install the CLI and key, then add the skill with the [Skills CLI](https://github.com/vercel-labs/skills):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcribe-for-agents/main/install.sh | bash -s -- --agent none
-npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a cursor
+curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcription-agent-plugin/main/install.sh | bash -s -- --agent none
+npx skills add cyanxxy/transcription-agent-plugin --skill transcribe-for-agents -g -a cursor
 ```
 
 Then start a new agent session and ask:
@@ -78,7 +80,7 @@ Prefer to read it first? [Read install.sh](install.sh), then clone this reposito
 To pass options through the one-line install, use `bash -s --`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcribe-for-agents/main/install.sh | bash -s -- --agent codex --provider meta
+curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcription-agent-plugin/main/install.sh | bash -s -- --agent codex --provider meta
 ```
 
 </details>
@@ -104,7 +106,7 @@ The skill follows the open [Agent Skills](https://agentskills.io/specification) 
 | **Gemini CLI** | `npx skills add … -g -a gemini-cli` | Agent Skills compatible |
 | **Antigravity CLI** | `npx skills add … -g -a antigravity-cli` | Agent Skills compatible |
 
-`…` stands for `cyanxxy/transcribe-for-agents --skill transcribe-for-agents`. See the [Skills CLI](https://github.com/vercel-labs/skills) for every supported agent.
+`…` stands for `cyanxxy/transcription-agent-plugin --skill transcribe-for-agents`. See the [Skills CLI](https://github.com/vercel-labs/skills) for every supported agent.
 
 > [!NOTE]
 > Cloud agent sessions (Claude Code on the web, Codex cloud) don't have your local CLI or keys, so the skill works only where the agent runs on your machine.
@@ -208,7 +210,7 @@ The skill and plugins below **do not include the transcription engine or a key**
 With the [Skills CLI](https://github.com/vercel-labs/skills), replacing `cursor` with [your agent](#-works-with):
 
 ```bash
-npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a cursor
+npx skills add cyanxxy/transcription-agent-plugin --skill transcribe-for-agents -g -a cursor
 ```
 
 </details>
@@ -219,7 +221,7 @@ npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a
 <br>
 
 ```bash
-claude plugin marketplace add cyanxxy/transcribe-for-agents
+claude plugin marketplace add cyanxxy/transcription-agent-plugin
 claude plugin install transcription-agent@transcription-agent-tools
 ```
 
@@ -231,7 +233,7 @@ claude plugin install transcription-agent@transcription-agent-tools
 <br>
 
 ```bash
-codex plugin marketplace add cyanxxy/transcribe-for-agents
+codex plugin marketplace add cyanxxy/transcription-agent-plugin
 codex plugin add transcription-agent@transcription-agent-tools
 ```
 

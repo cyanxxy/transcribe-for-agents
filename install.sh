@@ -3,7 +3,7 @@
 # download from `curl | bash` never executes a truncated script.
 set -euo pipefail
 
-repo_url='https://github.com/cyanxxy/transcribe-for-agents.git'
+repo_url='https://github.com/cyanxxy/transcription-agent-plugin.git'
 engine_url='https://github.com/cyanxxy/transcription-agent-go.git'
 engine_ref='v1.1.0'
 engine_sha='db8313a7ef90a5d20e027328d0cab8d20fc28e8d'
@@ -16,7 +16,7 @@ Installs or upgrades the transcribe-for-agents skill and Go transcription CLI
 for your user account. Re-run it to upgrade; replaced files are backed up.
 
 --agent none installs only the CLI and key; add the skill to any other agent
-with: npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a <agent>
+with: npx skills add cyanxxy/transcription-agent-plugin --skill transcribe-for-agents -g -a <agent>
 USAGE
 }
 
@@ -217,7 +217,7 @@ main() {
   printf '\nReady. Start a new agent session, give it an audio file, and ask it to transcribe it.\n'
   printf 'CLI: %s\n' "$cli"
   if [[ "$agent" == none ]]; then
-    printf 'Add the skill to your agent with:\n  npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a <agent>\n'
+    printf 'Add the skill to your agent with:\n  npx skills add cyanxxy/transcription-agent-plugin --skill transcribe-for-agents -g -a <agent>\n'
   fi
   # shellcheck disable=SC2016 # print a literal $PATH for the user to paste
   case ":$PATH:" in

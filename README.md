@@ -1,20 +1,45 @@
 # Transcribe for Agents
 
-A transcription skill for Claude Code, Codex, and other agents supported by the [Skills CLI](https://github.com/vercel-labs/skills). Give your agent a local MP3, WAV, M4A, FLAC, or OGG recording and get a timestamped, speaker-labeled TXT, SRT, or JSON transcript. The skill uses the Go `transcriber-cli` from [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go); this repository contains the agent instructions and plugin manifests, not the transcription engine or API keys.
+Give Claude Code or Codex a local recording and get a timestamped, speaker-labeled transcript or subtitles. The shared [transcribe skill](plugins/transcription-agent/skills/transcribe/SKILL.md) uses the Go CLI from [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go) and supports MP3, WAV, M4A, FLAC, and OGG input with TXT, SRT, or JSON output.
 
-## Quick install
+## One-command setup
 
-Choose one installation method for your agent:
+Run this in your own terminal on macOS or Linux:
 
 ```bash
-# Skills CLI: Claude Code
-npx skills add cyanxxy/transcribe-for-agents --skill transcribe --agent claude-code --global
+curl -fsSL https://raw.githubusercontent.com/cyanxxy/transcribe-for-agents/main/install.sh | bash
+```
 
-# Skills CLI: Codex
+The installer copies the skill to both Claude Code and Codex, builds the Go CLI from the pinned `v1.1.0` release, and prompts privately for a Gemini API key. If Go or FFmpeg is missing on a Mac with Homebrew, it offers to install them. On other systems, it names missing prerequisites. You need `git` and `curl`; no Python or Node.js runtime is required. The key is the one setup step that cannot be skipped for a cloud speech provider.
+
+Prefer to inspect the installer first? [Read install.sh](install.sh), then clone this repository and run `bash install.sh`. Use `--agent claude-code` or `--agent codex` to install for only one agent. Use `--provider meta` or `--provider microsoft` for another speech provider, or `--skip-auth` to configure a key later.
+
+The installer stores the key in an owner-only file under `~/.config/transcribe-for-agents/` (or `$XDG_CONFIG_HOME/transcribe-for-agents/`). The installed `~/.local/bin/transcriber-cli` wrapper reads it and starts the Go CLI. Environment variables `GEMINI_API_KEY`, `META_API_KEY`, `AZURE_SPEECH_KEY`, and `AZURE_SPEECH_ENDPOINT` take precedence. To change or remove a key later, run:
+
+```bash
+~/.local/bin/transcriber-cli auth set gemini
+~/.local/bin/transcriber-cli auth status
+~/.local/bin/transcriber-cli auth remove gemini
+```
+
+Start a new agent session after installation. Ask it to transcribe a recording, or invoke `/transcribe /absolute/path/to/meeting.m4a` in Claude Code. The CLI can also run directly:
+
+```bash
+~/.local/bin/transcriber-cli -i /absolute/path/to/meeting.m4a -o /absolute/path/to/meeting.srt -format srt
+```
+
+The default model is `gemini-3.5-transcribe`. Choose `muse-voice-transcribe-1.0` for Meta or `MAI-Transcribe-2` for Microsoft with `--model`. The CLI replaces an existing output file named with `-o`, so choose an unused path unless you intend to overwrite it.
+
+## Install only the skill
+
+If you already have `transcriber-cli` and the provider key configured, use the [Skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add cyanxxy/transcribe-for-agents --skill transcribe --agent claude-code --global
 npx skills add cyanxxy/transcribe-for-agents --skill transcribe --agent codex --global
 ```
 
-The repository also works as a native plugin marketplace:
+You can also install the native plugin from this repository's marketplaces:
 
 ```bash
 # Claude Code
@@ -26,86 +51,8 @@ codex plugin marketplace add cyanxxy/transcribe-for-agents
 codex plugin add transcription-agent@transcription-agent-tools
 ```
 
-After installing the skill, install `transcriber-cli` and configure one speech provider below. The skill cannot transcribe audio without the CLI and a provider key.
+Choose one skill installation method per agent to avoid duplicate `transcribe` skills. The skill and plugin do not include the transcription engine or a provider key; use the installer above for the guided setup.
 
-## 1. Install the CLI
+## Local development
 
-Build the CLI from the [Transcription Agent source](https://github.com/cyanxxy/transcription-agent-go) and put it on `PATH`:
-
-```bash
-git clone https://github.com/cyanxxy/transcription-agent-go.git
-cd transcription-agent-go
-make bin/transcriber-cli
-mkdir -p "$HOME/.local/bin"
-cp bin/transcriber-cli "$HOME/.local/bin/transcriber-cli"
-```
-
-Make sure `~/.local/bin` is on the `PATH` seen by Claude Code or Codex, or set `TRANSCRIBER_CLI` to the binary's absolute path in that environment. The CLI requires Go 1.26+ to build. Transcription also requires `ffmpeg` and `ffprobe`.
-
-## 2. Set up credentials
-
-Run the CLI setup command in your own terminal:
-
-```bash
-transcriber-cli auth set gemini
-transcriber-cli auth status
-```
-
-Use `auth set meta` or `auth set microsoft` for the other speech models. Microsoft setup asks for its Speech resource HTTPS endpoint too. The Go CLI hides key input and saves plaintext credentials in an owner-only file under the OS user config directory at `transcription-agent/credentials.json`. Set `TRANSCRIBER_CREDENTIALS_FILE` to an absolute path to use another location. Run `auth remove <provider>` to delete a saved key.
-
-Environment variables `GEMINI_API_KEY`, `META_API_KEY`, `AZURE_SPEECH_KEY`, and `AZURE_SPEECH_ENDPOINT` take precedence over saved values. For CI, use environment variables instead of interactive setup. Never commit keys to this repository.
-
-## 3. Load the plugin
-
-### Claude Code
-
-For local development:
-
-```bash
-claude --plugin-dir ./plugins/transcription-agent
-```
-
-Or register this repository's marketplace and install its plugin:
-
-```bash
-claude plugin marketplace add .
-claude plugin install transcription-agent@transcription-agent-tools
-```
-
-Then ask for a transcript or invoke `/transcription-agent:transcribe /absolute/path/to/meeting.m4a`.
-
-### Codex
-
-Register this repository's Codex marketplace, then install the plugin:
-
-```bash
-codex plugin marketplace add .
-codex plugin add transcription-agent@transcription-agent-tools
-```
-
-Start a new Codex task after installation and ask it to transcribe a local recording. The shared instructions are in [the transcribe skill](plugins/transcription-agent/skills/transcribe/SKILL.md).
-
-### Vercel Skills CLI
-
-The same `transcribe` skill is discoverable by the [Skills CLI](https://github.com/vercel-labs/skills), which can install it directly for Claude Code or Codex. From this repository, check discovery without installing:
-
-```bash
-npx skills add . --list
-```
-
-To install the skill globally from a local checkout, run one of these commands from this repository:
-
-```bash
-npx skills add . --skill transcribe --agent claude-code --global
-npx skills add . --skill transcribe --agent codex --global
-```
-
-For remote installation, use the `cyanxxy/transcribe-for-agents` commands in Quick install above. The Skills CLI installs the skill instructions; install `transcriber-cli` and set up a provider key with `transcriber-cli auth set` as described above. Use either the plugin marketplace or the Skills CLI for a given agent to avoid installing the same skill twice.
-
-## Direct usage
-
-```bash
-transcriber-cli -i /absolute/path/to/meeting.m4a -o /absolute/path/to/meeting.srt -format srt
-```
-
-The default model is `gemini-3.5-transcribe`. Select `muse-voice-transcribe-1.0` or `MAI-Transcribe-2` with `--model` when using Meta or Microsoft. Check whether an output file already exists before using `-o`: the CLI replaces it.
+Claude Code can load the plugin directly with `claude --plugin-dir ./plugins/transcription-agent`. Run `npx skills add . --list` from this checkout to verify skill discovery. The [Claude marketplace](.claude-plugin/marketplace.json) and [Codex marketplace](.agents/plugins/marketplace.json) package the same skill.

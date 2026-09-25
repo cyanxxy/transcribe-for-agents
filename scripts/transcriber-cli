@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/transcribe-for-agents"
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/transcribe-for-agents"
+engine="${TRANSCRIBER_ENGINE_BIN:-$data_dir/transcriber-cli.bin}"
+
+fail() { printf 'transcriber-cli: %s\n' "$*" >&2; exit 1; }
+
+credential_file() {
+  case "$1" in
+    gemini) printf '%s/gemini.key' "$config_dir" ;;
+    meta) printf '%s/meta.key' "$config_dir" ;;
+    microsoft) printf '%s/microsoft.key' "$config_dir" ;;
+    *) fail 'provider must be gemini, meta, or microsoft' ;;
+  esac
+}
+
+check_secret_file() {
+  [[ ! -L "$config_dir" ]] || fail "config directory is a symlink: $config_dir"
+  [[ ! -L "$1" ]] || fail "credential file is a symlink: $1"
+  [[ ! -e "$1" || -f "$1" ]] || fail "credential path is not a regular file: $1"
+  if [[ -f "$1" ]]; then chmod 600 "$1"; fi
+}
+
+save_secret() {
+  local path="$1" value="$2" temp
+  [[ ! -L "$config_dir" ]] || fail "config directory is a symlink: $config_dir"
+  mkdir -p "$config_dir"
+  chmod 700 "$config_dir"
+  temp="$(mktemp "$config_dir/.credential.XXXXXXXX")"
+  chmod 600 "$temp"
+  printf '%s' "$value" > "$temp"
+  mv -f "$temp" "$path"
+}
+
+read_secret() {
+  local path="$1"
+  check_secret_file "$path"
+  if [[ -f "$path" ]]; then cat "$path"; fi
+}
+
+status() {
+  local provider path environment stored
+  for provider in gemini meta microsoft; do
+    path="$(credential_file "$provider")"
+    check_secret_file "$path"
+    case "$provider" in
+      gemini) environment="${GEMINI_API_KEY:-}" ;;
+      meta) environment="${META_API_KEY:-}" ;;
+      microsoft)
+        environment=""
+        [[ -z "${AZURE_SPEECH_KEY:-}" || -z "${AZURE_SPEECH_ENDPOINT:-}" ]] || environment='configured'
+        ;;
+    esac
+    stored=""
+    [[ ! -f "$path" ]] || stored="configured"
+    if [[ "$provider" == microsoft && ! -f "$config_dir/microsoft.endpoint" ]]; then stored=""; fi
+    if [[ -n "$environment" ]]; then
+      printf '%s: configured via environment\n' "$provider"
+    elif [[ -n "$stored" ]]; then
+      printf '%s: configured in local file\n' "$provider"
+    else
+      printf '%s: not configured\n' "$provider"
+    fi
+  done
+}
+
+if [[ "${1:-}" == auth ]]; then
+  action="${2:-}" provider="${3:-}"
+  if [[ "$action" == status && $# -eq 2 ]]; then status; exit 0; fi
+  [[ $# -eq 3 && ( "$action" == set || "$action" == remove ) ]] ||
+    fail 'usage: transcriber-cli auth status | auth set <gemini|meta|microsoft> | auth remove <gemini|meta|microsoft>'
+  path="$(credential_file "$provider")"
+  if [[ "$action" == remove ]]; then
+    check_secret_file "$path"
+    rm -f "$path"
+    if [[ "$provider" == microsoft ]]; then rm -f "$config_dir/microsoft.endpoint"; fi
+    printf 'Removed saved %s credentials.\n' "$provider"
+    exit 0
+  fi
+  if [[ -t 0 ]]; then
+    printf '%s API key: ' "$provider" >&2
+    IFS= read -r -s key || fail 'could not read API key'
+    printf '\n' >&2
+  elif { : < /dev/tty; } 2>/dev/null; then
+    printf '%s API key: ' "$provider" > /dev/tty
+    IFS= read -r -s key < /dev/tty || fail 'could not read API key'
+    printf '\n' > /dev/tty
+  else
+    fail 'auth set needs an interactive terminal'
+  fi
+  [[ -n "$key" ]] || fail 'API key cannot be empty'
+  if [[ "$provider" == microsoft ]]; then
+    if [[ -t 0 ]]; then
+      printf 'Azure Speech HTTPS resource endpoint: ' >&2
+      IFS= read -r endpoint || fail 'could not read endpoint'
+    else
+      printf 'Azure Speech HTTPS resource endpoint: ' > /dev/tty
+      IFS= read -r endpoint < /dev/tty || fail 'could not read endpoint'
+    fi
+    [[ "$endpoint" =~ ^https://[^/?#]+/?$ ]] || fail 'endpoint must be an HTTPS resource origin'
+    save_secret "$config_dir/microsoft.endpoint" "${endpoint%/}"
+  fi
+  save_secret "$path" "$key"
+  unset key
+  printf 'Saved %s credentials to an owner-only local file.\n' "$provider"
+  exit 0
+fi
+
+[[ -x "$engine" ]] || fail "transcription engine is missing: $engine (run the installer again)"
+if [[ -z "${GEMINI_API_KEY:-}" ]]; then GEMINI_API_KEY="$(read_secret "$(credential_file gemini)")"; export GEMINI_API_KEY; fi
+if [[ -z "${META_API_KEY:-}" ]]; then META_API_KEY="$(read_secret "$(credential_file meta)")"; export META_API_KEY; fi
+if [[ -z "${AZURE_SPEECH_KEY:-}" ]]; then AZURE_SPEECH_KEY="$(read_secret "$(credential_file microsoft)")"; export AZURE_SPEECH_KEY; fi
+if [[ -z "${AZURE_SPEECH_ENDPOINT:-}" ]]; then
+  AZURE_SPEECH_ENDPOINT="$(read_secret "$config_dir/microsoft.endpoint")"
+  export AZURE_SPEECH_ENDPOINT
+fi
+exec "$engine" "$@"

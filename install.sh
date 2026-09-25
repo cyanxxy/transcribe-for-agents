@@ -13,7 +13,7 @@ usage() {
   cat <<'USAGE'
 Usage: bash install.sh [--agent claude-code|codex|both] [--provider gemini|meta|microsoft] [--skip-auth]
 
-Installs the transcribe skill and Go transcription CLI into your user account.
+Installs the transcribe-for-agents skill and Go transcription CLI into your user account.
 USAGE
 }
 
@@ -66,7 +66,7 @@ temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
 
 source_dir="${TRANSCRIBE_INSTALL_SOURCE:-}"
-if [[ -z "$source_dir" && -f "$(dirname "${BASH_SOURCE[0]}")/plugins/transcription-agent/skills/transcribe/SKILL.md" ]]; then
+if [[ -z "$source_dir" && -f "$(dirname "${BASH_SOURCE[0]}")/plugins/transcription-agent/skills/transcribe-for-agents/SKILL.md" ]]; then
   source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 if [[ -z "$source_dir" ]]; then
@@ -74,7 +74,7 @@ if [[ -z "$source_dir" ]]; then
   git clone --quiet --depth 1 "$repo_url" "$temp_dir/plugin"
   source_dir="$temp_dir/plugin"
 fi
-skill_dir="$source_dir/plugins/transcription-agent/skills/transcribe"
+skill_dir="$source_dir/plugins/transcription-agent/skills/transcribe-for-agents"
 wrapper="$source_dir/scripts/transcriber-cli"
 [[ -f "$skill_dir/SKILL.md" && -f "$wrapper" ]] || fail 'skill or CLI wrapper is missing from the source repository'
 bin_dir="$HOME/.local/bin"
@@ -84,8 +84,8 @@ if [[ -e "$bin_dir/transcriber-cli" || -L "$bin_dir/transcriber-cli" ]]; then
 fi
 
 targets=()
-if [[ "$agent" == both || "$agent" == claude-code ]]; then targets+=("$HOME/.claude/skills/transcribe"); fi
-if [[ "$agent" == both || "$agent" == codex ]]; then targets+=("$HOME/.codex/skills/transcribe"); fi
+if [[ "$agent" == both || "$agent" == claude-code ]]; then targets+=("$HOME/.claude/skills/transcribe-for-agents"); fi
+if [[ "$agent" == both || "$agent" == codex ]]; then targets+=("$HOME/.codex/skills/transcribe-for-agents"); fi
 for target in "${targets[@]}"; do
   if [[ -e "$target" || -L "$target" ]]; then
     diff -qr "$skill_dir" "$target" >/dev/null || fail "existing skill differs: $target (remove or back it up before installing)"

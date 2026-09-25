@@ -1,5 +1,5 @@
 ---
-name: transcribe
+name: transcribe-for-agents
 description: Transcribe a local MP3, WAV, M4A, FLAC, or OGG recording with Transcription Agent; produce a timestamped, speaker-labeled TXT, SRT, or JSON file. Use when the user asks for audio transcription, subtitles, diarization, or a transcript export.
 ---
 

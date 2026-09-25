@@ -1,6 +1,6 @@
 # Transcribe for Agents
 
-Give Claude Code or Codex a local recording and get a timestamped, speaker-labeled transcript or subtitles. The shared [transcribe skill](plugins/transcription-agent/skills/transcribe/SKILL.md) uses the Go CLI from [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go) and supports MP3, WAV, M4A, FLAC, and OGG input with TXT, SRT, or JSON output.
+Give Claude Code or Codex a local recording and get a timestamped, speaker-labeled transcript or subtitles. The shared [transcribe-for-agents skill](plugins/transcription-agent/skills/transcribe-for-agents/SKILL.md) uses the Go CLI from [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go) and supports MP3, WAV, M4A, FLAC, and OGG input with TXT, SRT, or JSON output.
 
 ## One-command setup
 
@@ -22,7 +22,7 @@ The installer stores the key in an owner-only file under `~/.config/transcribe-f
 ~/.local/bin/transcriber-cli auth remove gemini
 ```
 
-Start a new agent session after installation. Ask it to transcribe a recording, or invoke `/transcribe /absolute/path/to/meeting.m4a` in Claude Code. The CLI can also run directly:
+Start a new agent session after installation. Ask it to transcribe a recording, or invoke `/transcribe-for-agents /absolute/path/to/meeting.m4a` in Claude Code. The CLI can also run directly:
 
 ```bash
 ~/.local/bin/transcriber-cli -i /absolute/path/to/meeting.m4a -o /absolute/path/to/meeting.srt -format srt
@@ -35,8 +35,8 @@ The default model is `gemini-3.5-transcribe`. Choose `muse-voice-transcribe-1.0`
 If you already have `transcriber-cli` and the provider key configured, use the [Skills CLI](https://github.com/vercel-labs/skills):
 
 ```bash
-npx skills add cyanxxy/transcribe-for-agents --skill transcribe --agent claude-code --global
-npx skills add cyanxxy/transcribe-for-agents --skill transcribe --agent codex --global
+npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents --agent claude-code --global
+npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents --agent codex --global
 ```
 
 You can also install the native plugin from this repository's marketplaces:
@@ -51,7 +51,7 @@ codex plugin marketplace add cyanxxy/transcribe-for-agents
 codex plugin add transcription-agent@transcription-agent-tools
 ```
 
-Choose one skill installation method per agent to avoid duplicate `transcribe` skills. The skill and plugin do not include the transcription engine or a provider key; use the installer above for the guided setup.
+Choose one skill installation method per agent to avoid duplicate `transcribe-for-agents` skills. The skill and plugin do not include the transcription engine or a provider key; use the installer above for the guided setup.
 
 ## Local development
 

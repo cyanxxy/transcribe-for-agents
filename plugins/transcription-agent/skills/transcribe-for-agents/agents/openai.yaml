@@ -1,0 +1,7 @@
+interface:
+  display_name: "Transcribe for Agents"
+  short_description: "Transcribe local audio to TXT, SRT, or JSON with speaker labels."
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.png"
+  brand_color: "#6D28D9"
+  default_prompt: "Transcribe this recording and save subtitles next to it."

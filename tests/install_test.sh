@@ -67,7 +67,8 @@ fi
 check 'installs wrapper' test -x "$home/.local/bin/transcriber-cli"
 check 'installs engine' test -x "$home/.local/share/transcribe-for-agents/transcriber-cli.bin"
 check 'installs Claude Code skill' test -f "$home/.claude/skills/transcribe-for-agents/SKILL.md"
-check 'installs Codex skill' test -f "$home/.codex/skills/transcribe-for-agents/SKILL.md"
+check 'installs Codex skill in ~/.agents/skills' test -f "$home/.agents/skills/transcribe-for-agents/SKILL.md"
+check 'does not use the deprecated ~/.codex/skills' test ! -e "$home/.codex/skills/transcribe-for-agents"
 check 'warns when bin dir is not on PATH' grep -q 'is not on your PATH' <<<"$output"
 
 check 're-running an identical install succeeds' quiet run_install --skip-auth
@@ -93,6 +94,57 @@ new_home
 mkdir -p "$home/.claude/skills/transcribe-for-agents"
 printf -- '---\nname: something-else\n---\n' > "$home/.claude/skills/transcribe-for-agents/SKILL.md"
 check 'refuses to replace an unrelated skill' not run_install --skip-auth --agent claude-code
+
+skill_src="$repo/plugins/transcription-agent/skills/transcribe-for-agents"
+backups() { find "$home/.local/share/transcribe-for-agents/backups" -maxdepth 2 -name "$1" 2>/dev/null; }
+
+new_home
+mkdir -p "$home/.codex/skills"
+cp -R "$skill_src" "$home/.codex/skills/"
+check 'installs over a copy in the deprecated Codex folder' quiet run_install --skip-auth
+check 'removes the deprecated Codex copy' test ! -e "$home/.codex/skills/transcribe-for-agents"
+check 'backs up the deprecated Codex copy' test -n "$(backups codex-legacy-skill)"
+check 'installs the current Codex copy' test -f "$home/.agents/skills/transcribe-for-agents/SKILL.md"
+
+new_home
+mkdir -p "$home/.codex/skills" "$home/elsewhere"
+cp -R "$skill_src" "$home/elsewhere/"
+ln -s "$home/elsewhere/transcribe-for-agents" "$home/.codex/skills/transcribe-for-agents"
+check 'warns about a symlinked deprecated Codex copy' \
+  grep -q 'is a symlink from another installer' <<<"$(run_install --skip-auth 2>&1)"
+check 'leaves the symlinked deprecated Codex copy alone' test -L "$home/.codex/skills/transcribe-for-agents"
+
+new_home
+mkdir -p "$home/.claude/skills"
+cp -R "$skill_src" "$home/.claude/skills/"
+printf '{\n  "enabledPlugins": {\n    "transcription-agent@transcription-agent-tools": true\n  }\n}\n' > "$home/.claude/settings.json"
+check 'reports that the Claude Code plugin provides the skill' \
+  grep -q 'Claude Code: the transcription-agent@transcription-agent-tools plugin provides the skill' <<<"$(run_install --skip-auth 2>&1)"
+check 'no standalone Claude Code copy while the plugin is enabled' test ! -e "$home/.claude/skills/transcribe-for-agents"
+check 'backs up the old Claude Code copy' test -n "$(backups claude-skill)"
+check 'still installs the Codex copy' test -f "$home/.agents/skills/transcribe-for-agents/SKILL.md"
+
+new_home
+mkdir -p "$home/.claude"
+printf '{"enabledPlugins":{"transcription-agent@transcription-agent-tools":false}}\n' > "$home/.claude/settings.json"
+quiet run_install --skip-auth --agent claude-code
+check 'a disabled Claude Code plugin does not skip the skill' test -f "$home/.claude/skills/transcribe-for-agents/SKILL.md"
+
+new_home
+mkdir -p "$home/.codex"
+printf '[plugins."other@x"]\nenabled = true\n\n[plugins."transcription-agent@transcription-agent-tools"]\nenabled = true\n' > "$home/.codex/config.toml"
+quiet run_install --skip-auth --agent codex
+check 'no standalone Codex copy while the Codex plugin is enabled' test ! -e "$home/.agents/skills/transcribe-for-agents"
+printf '[plugins."transcription-agent@transcription-agent-tools"]\nenabled = false\n[plugins."other@x"]\nenabled = true\n' > "$home/.codex/config.toml"
+quiet run_install --skip-auth --agent codex
+check 'a disabled Codex plugin does not skip the skill' test -f "$home/.agents/skills/transcribe-for-agents/SKILL.md"
+
+new_home
+mkdir -p "$home/.claude" "$home/.codex"
+printf '{"enabledPlugins":{"transcription-agent@transcription-agent-tools":true}}\n' > "$home/.claude/settings.json"
+printf '[plugins."transcription-agent@transcription-agent-tools"]\nenabled = true\n' > "$home/.codex/config.toml"
+check 'installs only the CLI when both plugins are enabled' quiet run_install --skip-auth
+check 'CLI is installed when both plugins are enabled' test -x "$home/.local/bin/transcriber-cli"
 
 new_home
 run_install --skip-auth >/dev/null 2>&1

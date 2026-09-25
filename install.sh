@@ -51,6 +51,20 @@ is_our_skill() {
   [[ -d "$1" && ! -L "$1" && -f "$1/SKILL.md" ]] && grep -q '^name: transcribe-for-agents$' "$1/SKILL.md"
 }
 
+# The transcription-agent plugin ships the same skill. When it is enabled, a
+# standalone copy would make the agent load the skill twice.
+plugin_id='transcription-agent@transcription-agent-tools'
+claude_plugin_enabled() {
+  grep -Eq "\"$plugin_id\"[[:space:]]*:[[:space:]]*true" "$HOME/.claude/settings.json" 2>/dev/null
+}
+codex_plugin_enabled() {
+  awk -v want="[plugins.\"$plugin_id\"]" '
+    /^[[:space:]]*\[/ { gsub(/[[:space:]]/, ""); in_section = ($0 == want); next }
+    in_section && /^[[:space:]]*enabled[[:space:]]*=[[:space:]]*true/ { found = 1 }
+    END { exit !found }
+  ' "${CODEX_HOME:-$HOME/.codex}/config.toml" 2>/dev/null
+}
+
 # backup <path>: move an installed file or directory out of the way.
 # Backups go under the data directory, never beside a skill, so agents do not
 # load an old copy as a second skill.
@@ -110,10 +124,31 @@ main() {
   if [[ -e "$cli" || -L "$cli" ]] && ! cmp -s "$wrapper" "$cli"; then
     is_our_wrapper "$cli" || fail "$cli is not a transcribe-for-agents wrapper (move it before installing)"
   fi
-  local targets=() target
-  if [[ "$agent" == both || "$agent" == claude-code ]]; then targets+=("$HOME/.claude/skills/transcribe-for-agents"); fi
-  if [[ "$agent" == both || "$agent" == codex ]]; then targets+=("$HOME/.codex/skills/transcribe-for-agents"); fi
-  for target in "${targets[@]}"; do
+  # targets get the skill; retired paths lose our old copy so the agent does
+  # not load the skill twice. Labels name the backups.
+  local targets=() target_labels=() retired=() retired_labels=() target i
+  local claude_skill="$HOME/.claude/skills/transcribe-for-agents"
+  local codex_skill="$HOME/.agents/skills/transcribe-for-agents"
+  local codex_legacy_skill="${CODEX_HOME:-$HOME/.codex}/skills/transcribe-for-agents"
+  if [[ "$agent" == both || "$agent" == claude-code ]]; then
+    if claude_plugin_enabled; then
+      printf 'Claude Code: the %s plugin provides the skill; skipping the standalone copy.\n' "$plugin_id"
+      retired+=("$claude_skill"); retired_labels+=(claude-skill)
+    else
+      targets+=("$claude_skill"); target_labels+=(claude-skill)
+    fi
+  fi
+  if [[ "$agent" == both || "$agent" == codex ]]; then
+    # Codex reads user skills from ~/.agents/skills; ~/.codex/skills is deprecated.
+    retired+=("$codex_legacy_skill"); retired_labels+=(codex-legacy-skill)
+    if codex_plugin_enabled; then
+      printf 'Codex: the %s plugin provides the skill; skipping the standalone copy.\n' "$plugin_id"
+      retired+=("$codex_skill"); retired_labels+=(codex-skill)
+    else
+      targets+=("$codex_skill"); target_labels+=(codex-skill)
+    fi
+  fi
+  for target in ${targets[@]+"${targets[@]}"}; do
     if [[ -L "$target" ]]; then
       diff -qr "$skill_dir" "$target" >/dev/null ||
         fail "$target is a symlink managed by another installer (update it there, or remove it and run this again)"
@@ -143,12 +178,11 @@ main() {
   install -m 755 "$temp_dir/transcriber-cli.bin" "$data_dir/transcriber-cli.bin"
   if [[ -e "$cli" ]] && ! cmp -s "$wrapper" "$cli"; then backup "$cli" transcriber-cli; fi
   install -m 755 "$wrapper" "$cli"
-  for target in "${targets[@]}"; do
+  for ((i = 0; i < ${#targets[@]}; i++)); do
+    target="${targets[i]}"
     if [[ ! -L "$target" ]]; then
       if [[ -e "$target" ]] && ! diff -qr "$skill_dir" "$target" >/dev/null; then
-        local agent_home
-        agent_home="$(basename "$(dirname "$(dirname "$target")")")"
-        backup "$target" "${agent_home#.}-skill"
+        backup "$target" "${target_labels[i]}"
       fi
       if [[ ! -e "$target" ]]; then
         mkdir -p "$(dirname "$target")"
@@ -156,6 +190,14 @@ main() {
       fi
     fi
     printf 'Installed skill: %s\n' "$target"
+  done
+  for ((i = 0; i < ${#retired[@]}; i++)); do
+    target="${retired[i]}"
+    if [[ -L "$target" ]]; then
+      printf 'Note: %s is a symlink from another installer and duplicates this skill. Remove it if the agent lists the skill twice.\n' "$target"
+    elif is_our_skill "$target"; then
+      backup "$target" "${retired_labels[i]}"
+    fi
   done
 
   if [[ "$skip_auth" == false ]]; then

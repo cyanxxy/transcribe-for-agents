@@ -39,7 +39,7 @@ Then start a new agent session and ask:
 ### What the installer does
 
 1. **Checks prerequisites.** If Go or FFmpeg is missing and Homebrew is available, it offers to install them. Otherwise it tells you what to install.
-2. **Installs the skill** for both Claude Code and Codex.
+2. **Installs the skill** for Claude Code (`~/.claude/skills`) and Codex (`~/.agents/skills`). If the `transcription-agent` plugin is already enabled for an agent, it skips that agent so the skill doesn't load twice. It also backs up and removes an older copy in Codex's deprecated `~/.codex/skills` folder.
 3. **Builds the CLI** from the pinned `v1.1.0` engine release (verified against its commit hash) into `~/.local/bin/transcriber-cli`.
 4. **Asks for your API key** in the terminal, without echoing it. If a key is already saved, it says so and skips the prompt.
 5. **Warns you** if `~/.local/bin` is not on your `PATH`.
@@ -93,7 +93,16 @@ Ask in plain language, for example *"transcribe this interview as JSON"*. In Cla
 
 If you installed it as a plugin, the command is `/transcription-agent:transcribe-for-agents`.
 
-The agent saves the output next to the audio unless you name another path, checks that the file was written, and reports the path, format, and model it used.
+The agent saves the output next to the audio unless you name another path, checks that the file was written, and reports the path, format, and model it used. Long recordings can take several minutes; the skill tells the agent to wait for the run to finish rather than start another one.
+
+### Codex: allow network access
+
+Codex runs commands in a sandbox with network access off by default, and the CLI needs the network to reach the speech provider. When Codex asks to run `transcriber-cli` with network access, approve it. To allow network access for all sandboxed commands instead, add this to `~/.codex/config.toml`:
+
+```toml
+[sandbox_workspace_write]
+network_access = true
+```
 
 ### From the terminal
 
@@ -197,6 +206,8 @@ codex plugin add transcription-agent@transcription-agent-tools
 | `… is not a transcribe-for-agents wrapper` or `… skill` | Another tool already uses that path. Move it, then run the installer again. |
 | `microsoft: incomplete` | Microsoft needs both a key and an endpoint. Run `transcriber-cli auth set microsoft`. |
 | The agent doesn't see the skill | Start a new agent session after installing. |
+| The agent lists the skill twice | Keep one install method per agent: the plugin or the installer's standalone copy. Run the installer again after enabling the plugin to remove the copy. |
+| Connection or DNS errors in Codex | Network access is blocked by the sandbox. See [Codex: allow network access](#codex-allow-network-access). |
 
 FFmpeg (`ffmpeg` and `ffprobe`) must stay on your `PATH` when the agent runs.
 
@@ -220,6 +231,8 @@ install.sh                          One-command installer
 scripts/transcriber-cli             Wrapper: loads credentials, runs the engine
 plugins/transcription-agent/
   skills/transcribe-for-agents/     The shared skill (SKILL.md)
+    agents/openai.yaml              Codex skill picker name, icon, and prompt
+  assets/                           Plugin logo and icon
   .claude-plugin/plugin.json        Claude Code plugin manifest
   .codex-plugin/plugin.json         Codex plugin manifest
 .claude-plugin/marketplace.json     Claude Code marketplace

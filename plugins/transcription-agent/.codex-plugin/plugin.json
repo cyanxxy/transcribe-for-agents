@@ -1,11 +1,13 @@
 {
   "name": "transcription-agent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Transcribe local audio with the Transcription Agent CLI.",
   "author": {
     "name": "cyanxxy",
     "url": "https://github.com/cyanxxy"
   },
+  "homepage": "https://github.com/cyanxxy/transcribe-for-agents#readme",
+  "repository": "https://github.com/cyanxxy/transcribe-for-agents",
   "license": "Apache-2.0",
   "keywords": [
     "audio",
@@ -26,6 +28,10 @@
     "defaultPrompt": [
       "Transcribe this recording and save an SRT file.",
       "Create a speaker-labeled transcript from this audio."
-    ]
+    ],
+    "websiteURL": "https://github.com/cyanxxy/transcribe-for-agents",
+    "brandColor": "#6D28D9",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
   }
 }

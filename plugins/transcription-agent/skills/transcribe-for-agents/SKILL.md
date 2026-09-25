@@ -16,6 +16,9 @@ Use the Go `transcriber-cli` from [Transcription Agent](https://github.com/cyanx
    transcriber-cli -i /absolute/path/to/meeting.m4a -o /absolute/path/to/meeting.srt -format srt
    ```
 
+   - **Allow for a long run.** Transcription can take several minutes for long recordings, and the engine stops itself after 30 minutes. Give the command the longest timeout your shell tool allows (for example 600000 ms in Claude Code), or run it in the background and wait for the process to exit. The output file is written only when transcription finishes. If the command times out or moves to the background, keep waiting for that process and then check the output. Do not start a second run, which costs the user twice and can overwrite the file.
+   - **Network access is required.** The CLI sends the audio to the provider's API and reads the saved key from the user's home directory. If commands run in a sandbox without network access (Codex does by default), request approval to run this command with network access or outside the sandbox. Connection or DNS errors from a sandboxed run mean network access was blocked; they do not mean the key is missing.
+
 5. Only these three models are supported. Pick one with `-model`; the wrapper rejects any other model:
    - `gemini-3.5-transcribe` (default): Google Gemini. Needs the `gemini` key.
    - `muse-voice-transcribe-1.0`: Meta Muse Voice Transcribe. Needs the `meta` key.

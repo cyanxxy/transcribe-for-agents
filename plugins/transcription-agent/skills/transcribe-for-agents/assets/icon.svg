@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Transcribe for Agents">
+  <rect width="512" height="512" rx="112" fill="#6D28D9"/>
+  <g fill="#FFFFFF">
+    <rect x="192" y="112" width="128" height="188" rx="64"/>
+    <rect x="242" y="340" width="28" height="60"/>
+    <rect x="184" y="392" width="144" height="28" rx="14"/>
+  </g>
+  <path d="M144 236 A112 112 0 0 0 368 236" fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round"/>
+</svg>

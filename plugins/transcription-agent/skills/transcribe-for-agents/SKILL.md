@@ -5,19 +5,24 @@ description: Transcribe a local MP3, WAV, M4A, FLAC, or OGG recording with Trans
 
 # Transcribe audio
 
-Use the Go `transcriber-cli` from [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go). Find it on `PATH`, use the absolute executable path in `TRANSCRIBER_CLI` if set, or check `$HOME/.local/bin/transcriber-cli` (the guided install location). This skill does not contain a transcription engine or require Python.
+Use the Go `transcriber-cli` from [Transcription Agent](https://github.com/cyanxxy/transcription-agent-go). Use the absolute executable path in `TRANSCRIBER_CLI` if set, otherwise find `transcriber-cli` on `PATH`, otherwise use `$HOME/.local/bin/transcriber-cli` (the guided install location, which may not be on `PATH`). Call it by that absolute path in every command below. This skill does not contain a transcription engine or require Python.
 
 1. Find the local audio file. Ask for its path only if it cannot be found from the user's message or workspace.
 2. Choose `txt` by default, `srt` for subtitles, or `json` for structured segments and metadata. Save beside the audio unless the user names another destination. Check whether the output exists before running: the CLI replaces a file named with `-o`, so use a different path unless the user wants it replaced.
-3. If the CLI is missing, direct the user to the [one-command installer](https://github.com/cyanxxy/transcribe-for-agents#one-command-setup). It installs the engine and skill, then prompts for a key in their terminal. Check credential status with `transcriber-cli auth status` if needed. To save a key later, tell the user to run `transcriber-cli auth set gemini` (or `meta` or `microsoft`) in their own terminal. Never ask the user to paste a key into chat or put it in command arguments.
+3. If the CLI is missing, direct the user to the [one-command installer](https://github.com/cyanxxy/transcribe-for-agents#one-command-setup). It installs the engine and skill, then prompts for a key in their terminal. Check credentials with `transcriber-cli auth status` (or `auth status gemini`, `meta`, or `microsoft`, which exits nonzero when that provider is not configured). To save a key later, tell the user to run `transcriber-cli auth set gemini` (or `meta` or `microsoft`) in their own terminal. Never ask the user to paste a key into chat or put it in command arguments.
 4. Run with absolute paths, for example:
 
    ```bash
    transcriber-cli -i /absolute/path/to/meeting.m4a -o /absolute/path/to/meeting.srt -format srt
    ```
 
-5. Use `--model muse-voice-transcribe-1.0` for Meta or `--model MAI-Transcribe-2` for Microsoft only when requested or when configured credentials make the choice clear. Otherwise use the default `gemini-3.5-transcribe`.
-6. `--topic`, `--speakers`, `--terms`, `--language-hints`, and `--expected-format` apply to the general-purpose Gemini pipeline, not the direct speech models. Do not promise those hints will influence the default direct model.
+5. Only these three models are supported. Pick one with `-model`; the wrapper rejects any other model:
+   - `gemini-3.5-transcribe` (default): Google Gemini. Needs the `gemini` key.
+   - `muse-voice-transcribe-1.0`: Meta Muse Voice Transcribe. Needs the `meta` key.
+   - `MAI-Transcribe-2`: Microsoft MAI-Transcribe-2 on Azure Speech. Needs the `microsoft` key and endpoint.
+
+   Use Meta or Microsoft only when the user asks for it or when it is the only configured provider (`transcriber-cli auth status`).
+6. Do not pass `-topic`, `-speakers`, `-terms`, `-keywords`, `-language-hints`, `-instructions`, `-expected-format`, or `-judge-model`. These three speech models ignore them, so do not promise that names, terms, or context will change the result.
 7. After success, check that the output file exists and is nonempty. Report its path, format, model, and any limitations visible in the result. Do not invent a transcript if the command fails.
 
-The CLI also accepts provider credentials from environment variables, which take precedence over saved keys. `ffmpeg` and `ffprobe` must be on `PATH`.
+The CLI also accepts provider credentials from environment variables (`GEMINI_API_KEY`, `META_API_KEY`, `AZURE_SPEECH_KEY`, `AZURE_SPEECH_ENDPOINT`), which take precedence over saved keys. `ffmpeg` and `ffprobe` must be on `PATH`.

@@ -1,18 +1,34 @@
 #!/usr/bin/env bash
+# transcribe-for-agents wrapper: loads saved provider credentials, then runs the
+# transcriber-cli.bin engine installed by install.sh.
 set -euo pipefail
 
 data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/transcribe-for-agents"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/transcribe-for-agents"
 engine="${TRANSCRIBER_ENGINE_BIN:-$data_dir/transcriber-cli.bin}"
+pending_temp=""
 
 fail() { printf 'transcriber-cli: %s\n' "$*" >&2; exit 1; }
+
+valid_provider() {
+  case "$1" in gemini|meta|microsoft) ;; *) fail 'provider must be gemini, meta, or microsoft' ;; esac
+}
 
 credential_file() {
   case "$1" in
     gemini) printf '%s/gemini.key' "$config_dir" ;;
     meta) printf '%s/meta.key' "$config_dir" ;;
     microsoft) printf '%s/microsoft.key' "$config_dir" ;;
-    *) fail 'provider must be gemini, meta, or microsoft' ;;
+    microsoft-endpoint) printf '%s/microsoft.endpoint' "$config_dir" ;;
+  esac
+}
+
+env_name() {
+  case "$1" in
+    gemini) printf 'GEMINI_API_KEY' ;;
+    meta) printf 'META_API_KEY' ;;
+    microsoft) printf 'AZURE_SPEECH_KEY' ;;
+    microsoft-endpoint) printf 'AZURE_SPEECH_ENDPOINT' ;;
   esac
 }
 
@@ -20,18 +36,22 @@ check_secret_file() {
   [[ ! -L "$config_dir" ]] || fail "config directory is a symlink: $config_dir"
   [[ ! -L "$1" ]] || fail "credential file is a symlink: $1"
   [[ ! -e "$1" || -f "$1" ]] || fail "credential path is not a regular file: $1"
-  if [[ -f "$1" ]]; then chmod 600 "$1"; fi
+  if [[ -f "$1" ]]; then
+    [[ -O "$1" ]] || fail "credential file is not owned by you: $1"
+    chmod 600 "$1"
+  fi
 }
 
 save_secret() {
-  local path="$1" value="$2" temp
+  local path="$1" value="$2"
   [[ ! -L "$config_dir" ]] || fail "config directory is a symlink: $config_dir"
   mkdir -p "$config_dir"
   chmod 700 "$config_dir"
-  temp="$(mktemp "$config_dir/.credential.XXXXXXXX")"
-  chmod 600 "$temp"
-  printf '%s' "$value" > "$temp"
-  mv -f "$temp" "$path"
+  pending_temp="$(mktemp "$config_dir/.credential.XXXXXXXX")"
+  chmod 600 "$pending_temp"
+  printf '%s' "$value" > "$pending_temp"
+  mv -f "$pending_temp" "$path"
+  pending_temp=""
 }
 
 read_secret() {
@@ -40,67 +60,104 @@ read_secret() {
   if [[ -f "$path" ]]; then cat "$path"; fi
 }
 
-status() {
-  local provider path environment stored
-  for provider in gemini meta microsoft; do
-    path="$(credential_file "$provider")"
+# source_of <item>: prints "environment", "local file", or nothing.
+source_of() {
+  local variable path
+  variable="$(env_name "$1")"
+  path="$(credential_file "$1")"
+  if [[ -n "${!variable:-}" ]]; then
+    printf 'environment'
+  else
     check_secret_file "$path"
-    case "$provider" in
-      gemini) environment="${GEMINI_API_KEY:-}" ;;
-      meta) environment="${META_API_KEY:-}" ;;
-      microsoft)
-        environment=""
-        [[ -z "${AZURE_SPEECH_KEY:-}" || -z "${AZURE_SPEECH_ENDPOINT:-}" ]] || environment='configured'
-        ;;
-    esac
-    stored=""
-    [[ ! -f "$path" ]] || stored="configured"
-    if [[ "$provider" == microsoft && ! -f "$config_dir/microsoft.endpoint" ]]; then stored=""; fi
-    if [[ -n "$environment" ]]; then
-      printf '%s: configured via environment\n' "$provider"
-    elif [[ -n "$stored" ]]; then
-      printf '%s: configured in local file\n' "$provider"
-    else
-      printf '%s: not configured\n' "$provider"
+    if [[ -s "$path" ]]; then printf 'local file'; fi
+  fi
+}
+
+# provider_status <provider>: prints one status line; returns 0 when configured.
+provider_status() {
+  local key_source endpoint_source
+  key_source="$(source_of "$1")"
+  if [[ "$1" == microsoft ]]; then
+    endpoint_source="$(source_of microsoft-endpoint)"
+    if [[ -n "$key_source" && -n "$endpoint_source" ]]; then
+      if [[ "$key_source" == "$endpoint_source" ]]; then
+        printf 'microsoft: configured via %s\n' "$key_source"
+      else
+        printf 'microsoft: configured (key via %s, endpoint via %s)\n' "$key_source" "$endpoint_source"
+      fi
+      return 0
     fi
-  done
+    if [[ -n "$key_source$endpoint_source" ]]; then
+      printf 'microsoft: incomplete (needs both AZURE_SPEECH_KEY and AZURE_SPEECH_ENDPOINT)\n'
+    else
+      printf 'microsoft: not configured\n'
+    fi
+    return 1
+  fi
+  if [[ -n "$key_source" ]]; then
+    printf '%s: configured via %s\n' "$1" "$key_source"
+    return 0
+  fi
+  printf '%s: not configured\n' "$1"
+  return 1
+}
+
+prompt() {
+  local label="$1" secret="$2" value
+  if [[ -t 0 ]]; then
+    printf '%s: ' "$label" >&2
+    if [[ "$secret" == true ]]; then IFS= read -r -s value; else IFS= read -r value; fi || return 1
+    if [[ "$secret" == true ]]; then printf '\n' >&2; fi
+  else
+    printf '%s: ' "$label" > /dev/tty
+    if [[ "$secret" == true ]]; then IFS= read -r -s value < /dev/tty; else IFS= read -r value < /dev/tty; fi || return 1
+    if [[ "$secret" == true ]]; then printf '\n' > /dev/tty; fi
+  fi
+  printf '%s' "$value"
+}
+
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  printf '%s' "${value%"${value##*[![:space:]]}"}"
 }
 
 if [[ "${1:-}" == auth ]]; then
+  usage='usage: transcriber-cli auth status [gemini|meta|microsoft] | auth set <gemini|meta|microsoft> | auth remove <gemini|meta|microsoft>'
   action="${2:-}" provider="${3:-}"
-  if [[ "$action" == status && $# -eq 2 ]]; then status; exit 0; fi
-  [[ $# -eq 3 && ( "$action" == set || "$action" == remove ) ]] ||
-    fail 'usage: transcriber-cli auth status | auth set <gemini|meta|microsoft> | auth remove <gemini|meta|microsoft>'
+  if [[ "$action" == status && $# -le 3 ]]; then
+    if [[ -n "$provider" ]]; then
+      valid_provider "$provider"
+      provider_status "$provider"
+      exit
+    fi
+    for provider in gemini meta microsoft; do provider_status "$provider" || true; done
+    exit 0
+  fi
+  [[ $# -eq 3 && ( "$action" == set || "$action" == remove ) ]] || fail "$usage"
+  valid_provider "$provider"
   path="$(credential_file "$provider")"
   if [[ "$action" == remove ]]; then
     check_secret_file "$path"
     rm -f "$path"
-    if [[ "$provider" == microsoft ]]; then rm -f "$config_dir/microsoft.endpoint"; fi
+    if [[ "$provider" == microsoft ]]; then
+      check_secret_file "$(credential_file microsoft-endpoint)"
+      rm -f "$(credential_file microsoft-endpoint)"
+    fi
     printf 'Removed saved %s credentials.\n' "$provider"
     exit 0
   fi
-  if [[ -t 0 ]]; then
-    printf '%s API key: ' "$provider" >&2
-    IFS= read -r -s key || fail 'could not read API key'
-    printf '\n' >&2
-  elif { : < /dev/tty; } 2>/dev/null; then
-    printf '%s API key: ' "$provider" > /dev/tty
-    IFS= read -r -s key < /dev/tty || fail 'could not read API key'
-    printf '\n' > /dev/tty
-  else
-    fail 'auth set needs an interactive terminal'
-  fi
+  [[ -t 0 ]] || { : < /dev/tty; } 2>/dev/null || fail 'auth set needs an interactive terminal'
+  trap '[[ -z "$pending_temp" ]] || rm -f "$pending_temp"' EXIT
+  trap 'exit 130' INT TERM
+  key="$(prompt "$provider API key" true)" || fail 'could not read API key'
+  key="$(trim "$key")"
   [[ -n "$key" ]] || fail 'API key cannot be empty'
   if [[ "$provider" == microsoft ]]; then
-    if [[ -t 0 ]]; then
-      printf 'Azure Speech HTTPS resource endpoint: ' >&2
-      IFS= read -r endpoint || fail 'could not read endpoint'
-    else
-      printf 'Azure Speech HTTPS resource endpoint: ' > /dev/tty
-      IFS= read -r endpoint < /dev/tty || fail 'could not read endpoint'
-    fi
-    [[ "$endpoint" =~ ^https://[^/?#]+/?$ ]] || fail 'endpoint must be an HTTPS resource origin'
-    save_secret "$config_dir/microsoft.endpoint" "${endpoint%/}"
+    endpoint="$(prompt 'Azure Speech HTTPS resource endpoint' false)" || fail 'could not read endpoint'
+    endpoint="$(trim "$endpoint")"
+    [[ "$endpoint" =~ ^https://[^/?#@]+/?$ ]] || fail 'endpoint must be an HTTPS resource origin'
+    save_secret "$(credential_file microsoft-endpoint)" "${endpoint%/}"
   fi
   save_secret "$path" "$key"
   unset key
@@ -109,11 +166,48 @@ if [[ "${1:-}" == auth ]]; then
 fi
 
 [[ -x "$engine" ]] || fail "transcription engine is missing: $engine (run the installer again)"
-if [[ -z "${GEMINI_API_KEY:-}" ]]; then GEMINI_API_KEY="$(read_secret "$(credential_file gemini)")"; export GEMINI_API_KEY; fi
-if [[ -z "${META_API_KEY:-}" ]]; then META_API_KEY="$(read_secret "$(credential_file meta)")"; export META_API_KEY; fi
-if [[ -z "${AZURE_SPEECH_KEY:-}" ]]; then AZURE_SPEECH_KEY="$(read_secret "$(credential_file microsoft)")"; export AZURE_SPEECH_KEY; fi
-if [[ -z "${AZURE_SPEECH_ENDPOINT:-}" ]]; then
-  AZURE_SPEECH_ENDPOINT="$(read_secret "$config_dir/microsoft.endpoint")"
-  export AZURE_SPEECH_ENDPOINT
-fi
+
+# Only the three direct speech models are supported. The model also picks the
+# provider: only that provider's credentials reach the engine (and the ffmpeg
+# processes it starts), whether they come from saved files or the environment.
+#
+# Find -model the way the engine's Go flag package does: stop at "--" or the
+# first non-flag argument, and skip the value of every flag that takes one.
+# Keep bool_flags in sync with the engine's boolean flags.
+bool_flags=' h help version judge agentic auto-format remove-fillers skill-router '
+model='gemini-3.5-transcribe'
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  arg="${args[i]}"
+  [[ "$arg" == -?* && "$arg" != -- ]] || break
+  name="${arg#-}"
+  name="${name#-}"
+  if [[ "$name" == *=* ]]; then
+    [[ "${name%%=*}" != model ]] || model="${name#*=}"
+    continue
+  fi
+  [[ "$bool_flags" != *" $name "* ]] || continue
+  if [[ "$name" == model && $((i + 1)) -lt ${#args[@]} ]]; then model="${args[i + 1]}"; fi
+  i=$((i + 1))
+done
+case "$model" in
+  gemini-3.5-transcribe) providers=(gemini) ;;
+  muse-voice-transcribe-1.0) providers=(meta) ;;
+  MAI-Transcribe-2) providers=(microsoft microsoft-endpoint) ;;
+  *) fail "unsupported model: $model (use gemini-3.5-transcribe, muse-voice-transcribe-1.0, or MAI-Transcribe-2)" ;;
+esac
+
+for item in gemini meta microsoft microsoft-endpoint; do
+  variable="$(env_name "$item")"
+  case " ${providers[*]} " in
+    *" $item "*)
+      if [[ -z "${!variable:-}" ]]; then
+        value="$(read_secret "$(credential_file "$item")")"
+        if [[ -n "$value" ]]; then export "$variable=$value"; fi
+      fi
+      ;;
+    *) unset "$variable" ;;
+  esac
+done
+unset value
 exec "$engine" "$@"

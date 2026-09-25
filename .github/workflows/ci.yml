@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: ShellCheck
+        if: runner.os == 'Linux'
+        run: shellcheck install.sh scripts/transcriber-cli tests/install_test.sh
+      - name: Validate JSON manifests
+        run: |
+          for f in .claude-plugin/marketplace.json .agents/plugins/marketplace.json \
+                   plugins/transcription-agent/.claude-plugin/plugin.json \
+                   plugins/transcription-agent/.codex-plugin/plugin.json; do
+            python3 -m json.tool "$f" >/dev/null
+          done
+      - name: Installer and wrapper tests
+        run: bash tests/install_test.sh

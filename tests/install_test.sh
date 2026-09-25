@@ -140,6 +140,12 @@ quiet run_install --skip-auth --agent codex
 check 'a disabled Codex plugin does not skip the skill' test -f "$home/.agents/skills/transcribe-for-agents/SKILL.md"
 
 new_home
+check '--agent none installs only the CLI' grep -q 'npx skills add' <<<"$(run_install --skip-auth --agent none 2>&1)"
+check '--agent none installs the wrapper' test -x "$home/.local/bin/transcriber-cli"
+check '--agent none installs no skill' test -z "$(find "$home" -name SKILL.md)"
+check 'rejects an unknown --agent' not run_install --skip-auth --agent cursor
+
+new_home
 mkdir -p "$home/.claude" "$home/.codex"
 printf '{"enabledPlugins":{"transcription-agent@transcription-agent-tools":true}}\n' > "$home/.claude/settings.json"
 printf '[plugins."transcription-agent@transcription-agent-tools"]\nenabled = true\n' > "$home/.codex/config.toml"

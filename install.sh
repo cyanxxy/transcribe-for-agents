@@ -10,10 +10,13 @@ engine_sha='db8313a7ef90a5d20e027328d0cab8d20fc28e8d'
 
 usage() {
   cat <<'USAGE'
-Usage: bash install.sh [--agent claude-code|codex|both] [--provider gemini|meta|microsoft] [--skip-auth]
+Usage: bash install.sh [--agent claude-code|codex|both|none] [--provider gemini|meta|microsoft] [--skip-auth]
 
 Installs or upgrades the transcribe-for-agents skill and Go transcription CLI
 for your user account. Re-run it to upgrade; replaced files are backed up.
+
+--agent none installs only the CLI and key; add the skill to any other agent
+with: npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a <agent>
 USAGE
 }
 
@@ -87,7 +90,7 @@ main() {
       *) usage >&2; exit 2 ;;
     esac
   done
-  case "$agent" in claude-code|codex|both) ;; *) usage >&2; exit 2 ;; esac
+  case "$agent" in claude-code|codex|both|none) ;; *) usage >&2; exit 2 ;; esac
   case "$provider" in gemini|meta|microsoft) ;; *) usage >&2; exit 2 ;; esac
 
   require_command git
@@ -213,6 +216,9 @@ main() {
 
   printf '\nReady. Start a new agent session, give it an audio file, and ask it to transcribe it.\n'
   printf 'CLI: %s\n' "$cli"
+  if [[ "$agent" == none ]]; then
+    printf 'Add the skill to your agent with:\n  npx skills add cyanxxy/transcribe-for-agents --skill transcribe-for-agents -g -a <agent>\n'
+  fi
   # shellcheck disable=SC2016 # print a literal $PATH for the user to paste
   case ":$PATH:" in
     *":$bin_dir:"*) ;;
